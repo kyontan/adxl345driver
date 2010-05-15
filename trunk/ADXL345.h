@@ -1,3 +1,24 @@
+/**************************************************************************
+ *                                                                         *
+ * ADXL345 Driver for Arduino                                              *
+ *                                                                         *
+ ***************************************************************************
+ *                                                                         * 
+ * This program is free software; you can redistribute it and/or modify    *
+ * it under the terms of the MIT License.                                  *
+ * This program is distributed in the hope that it will be useful,         *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of          *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the           *
+ * GNU General Public License for more details.                            *
+ *                                                                         *
+ ***************************************************************************
+ * 
+ * Revision History
+ * 
+ * Date  By What
+ * 20100515 TJS Initial Creation 
+ */
+
 #ifndef ADXL345_h
 #define ADXL345_h
 
@@ -11,7 +32,7 @@
 #define ADXL345_DATA_FORMAT_ADDRESS 0x31
 #define ADXL345_DATA_ADDRESS        0x32
 
-#define ADXL345_POWER_CTL_MEAS_BIT  3
+#define ADXL345_POWER_CTL_MEAS_BIT        3
 #define ADXL345_DATA_FORMAT_FULL_RES_BIT  3
 
 
