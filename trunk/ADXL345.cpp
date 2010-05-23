@@ -23,6 +23,7 @@
 #include "ADXL345.h"
 
 ADXL345::ADXL345(){
+  error_code = ADXL_NO_ERR;
 }
 
 void ADXL345::start(byte bw_code){
