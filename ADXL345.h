@@ -17,6 +17,10 @@
 #ifndef ADXL345_h
 #define ADXL345_h
 
+/* -- ADXL345 addresses --*/
+#define ADXL345_ADDR_ALT_HIGH 0x1D // ADXL345 address when ALT is connected to HIGH
+#define ADXL345_ADDR_ALT_LOW  0x53 // ADXL345 address when ALT is connected to LOW
+
 /* ------- Register names ------- */
 #define ADXL345_DEVID 0x00
 #define ADXL345_RESERVED1 0x01
@@ -95,25 +99,26 @@ public:
   bool status;           // set when error occurs 
                          // see error code for details
   byte error_code;       // Initial state
-  double gains[3];        // counts to Gs
+  float gains[3];        // counts to Gs
 
   ADXL345();
+  void init(int address);
   void powerOn();
   void readAccel(int* xyx);
   void readAccel(int* x, int* y, int* z);
-  void get_Gxyz(double *xyz);
+  void get_Gxyz(float *xyz);
 
   void setTapThreshold(int tapThreshold);
   int getTapThreshold();
-  void setAxisGains(double *_gains);
-  void getAxisGains(double *_gains);
+  void setAxisGains(float *_gains);
+  void getAxisGains(float *_gains);
   void setAxisOffset(int x, int y, int z);
   void getAxisOffset(int* x, int* y, int*z);
   void setTapDuration(int tapDuration);
   int getTapDuration();
-  void setDoubleTapLatency(int doubleTapLatency);
+  void setDoubleTapLatency(int floatTapLatency);
   int getDoubleTapLatency();
-  void setDoubleTapWindow(int doubleTapWindow);
+  void setDoubleTapWindow(int floatTapWindow);
   int getDoubleTapWindow();
   void setActivityThreshold(int activityThreshold);
   int getActivityThreshold();
@@ -163,8 +168,8 @@ public:
 
   bool isLowPower();
   void setLowPower(bool state);
-  double getRate();
-  void setRate(double rate);
+  float getRate();
+  void setRate(float rate);
   void set_bw(byte bw_code);
   byte get_bw_code();  
 
@@ -188,14 +193,14 @@ public:
   bool getJustifyBit();
   void setJustifyBit(bool justifyBit);
   void printAllRegister();
+  void writeTo(byte address, byte val);
 
 private:
-  void writeTo(byte address, byte val);
   void readFrom(byte address, int num, byte buff[]);
   void setRegisterBit(byte regAdress, int bitPos, bool state);
   bool getRegisterBit(byte regAdress, int bitPos);  
   byte _buff[6] ;    //6 bytes buffer for saving data read from the device
+  int _dev_address;
 };
 void print_byte(byte val);
 #endif
-

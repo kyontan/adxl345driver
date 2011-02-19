@@ -12,11 +12,11 @@
  * GNU License V2 for more details.                                        *
  *                                                                         *
  ***************************************************************************/
+
 #include "WProgram.h"
 #include "ADXL345.h"
 #include <Wire.h>
 
-#define DEVICE (0x53)    // ADXL345 device address
 #define TO_READ (6)      // num of bytes we are going to read each time (two bytes for each axis)
 
 ADXL345::ADXL345() {
@@ -28,29 +28,35 @@ ADXL345::ADXL345() {
   gains[2] = 0.00349265;
 }
 
-void ADXL345::powerOn() {
-  Wire.begin();        // join i2c bus (address optional for master)
-  //Turning on the ADXL345
-  writeTo(ADXL345_POWER_CTL, 0);      
-  writeTo(ADXL345_POWER_CTL, 16);
-  writeTo(ADXL345_POWER_CTL, 8); 
+void ADXL345::init(int address) {
+  _dev_address = address;
+  powerOn();
 }
 
-// Reads the acceleration into three variable x, y and z
+void ADXL345::powerOn() {
+  //Turning on the ADXL345
+  //writeTo(ADXL345_POWER_CTL, 0);      
+  //writeTo(ADXL345_POWER_CTL, 16);
+  writeTo(ADXL345_POWER_CTL, 8);
+}
+
+// Reads the acceleration into an array of three places
 void ADXL345::readAccel(int *xyz){
   readAccel(xyz, xyz + 1, xyz + 2);
 }
+
+// Reads the acceleration into three variable x, y and z
 void ADXL345::readAccel(int *x, int *y, int *z) {
   readFrom(ADXL345_DATAX0, TO_READ, _buff); //read the acceleration data from the ADXL345
 
   // each axis reading comes in 10 bit resolution, ie 2 bytes.  Least Significat Byte first!!
   // thus we are converting both bytes in to one int
-  *x = (((int)_buff[1]) << 8) | _buff[0];   
+  *x = (((int)_buff[1]) << 8) | _buff[0];  
   *y = (((int)_buff[3]) << 8) | _buff[2];
   *z = (((int)_buff[5]) << 8) | _buff[4];
 }
 
-void ADXL345::get_Gxyz(double *xyz){
+void ADXL345::get_Gxyz(float *xyz){
   int i;
   int xyz_int[3];
   readAccel(xyz_int);
@@ -58,9 +64,10 @@ void ADXL345::get_Gxyz(double *xyz){
     xyz[i] = xyz_int[i] * gains[i];
   }
 }
+
 // Writes val to address register on device
 void ADXL345::writeTo(byte address, byte val) {
-  Wire.beginTransmission(DEVICE); // start transmission to device 
+  Wire.beginTransmission(_dev_address); // start transmission to device
   Wire.send(address);             // send register address
   Wire.send(val);                 // send value to write
   Wire.endTransmission();         // end transmission
@@ -68,16 +75,16 @@ void ADXL345::writeTo(byte address, byte val) {
 
 // Reads num bytes starting from address register on device in to _buff array
 void ADXL345::readFrom(byte address, int num, byte _buff[]) {
-  Wire.beginTransmission(DEVICE); // start transmission to device 
+  Wire.beginTransmission(_dev_address); // start transmission to device
   Wire.send(address);             // sends address to read from
   Wire.endTransmission();         // end transmission
 
-  Wire.beginTransmission(DEVICE); // start transmission to device
-  Wire.requestFrom(DEVICE, num);    // request 6 bytes from device
+  Wire.beginTransmission(_dev_address); // start transmission to device
+  Wire.requestFrom(_dev_address, num);    // request 6 bytes from device
 
   int i = 0;
   while(Wire.available())         // device may send less than requested (abnormal)
-  { 
+  {
     _buff[i] = Wire.receive();    // receive a byte
     i++;
   }
@@ -103,18 +110,18 @@ void ADXL345::setRangeSetting(int val) {
 
   switch (val) {
   case 2:  
-    _s = B00000000; 
+    _s = B00000000;
     break;
   case 4:  
-    _s = B00000001; 
+    _s = B00000001;
     break;
   case 8:  
-    _s = B00000010; 
+    _s = B00000010;
     break;
-  case 16: 
-    _s = B00000011; 
+  case 16:
+    _s = B00000011;
     break;
-  default: 
+  default:
     _s = B00000000;
   }
   readFrom(ADXL345_DATA_FORMAT, 1, &_b);
@@ -203,24 +210,24 @@ int ADXL345::getTapThreshold() {
 }
 
 // set/get the gain for each axis in Gs / count
-void ADXL345::setAxisGains(double *_gains){
+void ADXL345::setAxisGains(float *_gains){
   int i;
   for(i = 0; i < 3; i++){
     gains[i] = _gains[i];
   }
 }
-void ADXL345::getAxisGains(double *_gains){
+void ADXL345::getAxisGains(float *_gains){
   int i;
   for(i = 0; i < 3; i++){
     _gains[i] = gains[i];
   }
 }
-  
+ 
 
 // Sets the OFSX, OFSY and OFSZ bytes
 // OFSX, OFSY and OFSZ are user offset adjustments in twos complement format with
 // a scale factor of 15,6mg/LSB
-// OFSX, OFSY and OFSZ should be comprised between 
+// OFSX, OFSY and OFSZ should be comprised between
 void ADXL345::setAxisOffset(int x, int y, int z) {
   writeTo(ADXL345_OFSX, byte (x));  
   writeTo(ADXL345_OFSY, byte (y));  
@@ -242,7 +249,7 @@ void ADXL345::getAxisOffset(int* x, int* y, int*z) {
 // The DUR byte contains an unsigned time value representing the maximum time
 // that an event must be above THRESH_TAP threshold to qualify as a tap event
 // The scale factor is 625µs/LSB
-// A value of 0 disables the tap/double tap funcitons. Max value is 255.
+// A value of 0 disables the tap/float tap funcitons. Max value is 255.
 void ADXL345::setTapDuration(int tapDuration) {
   tapDuration = min(max(tapDuration,0),255);
   byte _b = byte (tapDuration);
@@ -259,10 +266,10 @@ int ADXL345::getTapDuration() {
 // Sets the latency (latent register) which contains an unsigned time value
 // representing the wait time from the detection of a tap event to the start
 // of the time window, during which a possible second tap can be detected.
-// The scale factor is 1.25ms/LSB. A value of 0 disables the double tap function.
+// The scale factor is 1.25ms/LSB. A value of 0 disables the float tap function.
 // It accepts a maximum value of 255.
-void ADXL345::setDoubleTapLatency(int doubleTapLatency) {
-  byte _b = byte (doubleTapLatency);
+void ADXL345::setDoubleTapLatency(int floatTapLatency) {
+  byte _b = byte (floatTapLatency);
   writeTo(ADXL345_LATENT, _b);  
 }
 
@@ -276,10 +283,10 @@ int ADXL345::getDoubleTapLatency() {
 // Sets the Window register, which contains an unsigned time value representing
 // the amount of time after the expiration of the latency time (Latent register)
 // during which a second valud tap can begin. The scale factor is 1.25ms/LSB. A
-// value of 0 disables the double tap function. The maximum value is 255.
-void ADXL345::setDoubleTapWindow(int doubleTapWindow) {
-  doubleTapWindow = min(max(doubleTapWindow,0),255);
-  byte _b = byte (doubleTapWindow);
+// value of 0 disables the float tap function. The maximum value is 255.
+void ADXL345::setDoubleTapWindow(int floatTapWindow) {
+  floatTapWindow = min(max(floatTapWindow,0),255);
+  byte _b = byte (floatTapWindow);
   writeTo(ADXL345_WINDOW, _b);  
 }
 
@@ -291,9 +298,9 @@ int ADXL345::getDoubleTapWindow() {
 }
 
 // Sets the THRESH_ACT byte which holds the threshold value for detecting activity.
-// The data format is unsigned, so the magnitude of the activity event is compared 
+// The data format is unsigned, so the magnitude of the activity event is compared
 // with the value is compared with the value in the THRESH_ACT register. The scale
-// factor is 62.5mg/LSB. A value of 0 may result in undesirable behavior if the 
+// factor is 62.5mg/LSB. A value of 0 may result in undesirable behavior if the
 // activity interrupt is enabled. The maximum value is 255.
 void ADXL345::setActivityThreshold(int activityThreshold) {
   activityThreshold = min(max(activityThreshold,0),255);
@@ -309,9 +316,9 @@ int ADXL345::getActivityThreshold() {
 }
 
 // Sets the THRESH_INACT byte which holds the threshold value for detecting inactivity.
-// The data format is unsigned, so the magnitude of the inactivity event is compared 
+// The data format is unsigned, so the magnitude of the inactivity event is compared
 // with the value is compared with the value in the THRESH_INACT register. The scale
-// factor is 62.5mg/LSB. A value of 0 may result in undesirable behavior if the 
+// factor is 62.5mg/LSB. A value of 0 may result in undesirable behavior if the
 // inactivity interrupt is enabled. The maximum value is 255.
 void ADXL345::setInactivityThreshold(int inactivityThreshold) {
   inactivityThreshold = min(max(inactivityThreshold,0),255);
@@ -345,7 +352,7 @@ int ADXL345::getTimeInactivity() {
 
 // Sets the THRESH_FF register which holds the threshold value, in an unsigned format, for
 // free-fall detection. The root-sum-square (RSS) value of all axes is calculated and
-// compared whith the value in THRESH_FF to determine if a free-fall event occured. The 
+// compared whith the value in THRESH_FF to determine if a free-fall event occured. The
 // scale factor is 62.5mg/LSB. A value of 0 may result in undesirable behavior if the free-fall
 // interrupt is enabled. The maximum value is 255.
 void ADXL345::setFreeFallThreshold(int freeFallThreshold) {
@@ -362,7 +369,7 @@ int ADXL345::getFreeFallThreshold() {
 }
 
 // Sets the TIME_FF register, which holds an unsigned time value representing the minimum
-// time that the RSS value of all axes must be less than THRESH_FF to generate a free-fall 
+// time that the RSS value of all axes must be less than THRESH_FF to generate a free-fall
 // interrupt. The scale factor is 5ms/LSB. A value of 0 may result in undesirable behavior if
 // the free-fall interrupt is enabled. The maximum value is 255.
 void ADXL345::setFreeFallDuration(int freeFallDuration) {
@@ -379,122 +386,122 @@ int ADXL345::getFreeFallDuration() {
 }
 
 bool ADXL345::isActivityXEnabled() {  
-  return getRegisterBit(ADXL345_ACT_INACT_CTL, 6); 
+  return getRegisterBit(ADXL345_ACT_INACT_CTL, 6);
 }
 bool ADXL345::isActivityYEnabled() {  
-  return getRegisterBit(ADXL345_ACT_INACT_CTL, 5); 
+  return getRegisterBit(ADXL345_ACT_INACT_CTL, 5);
 }
 bool ADXL345::isActivityZEnabled() {  
-  return getRegisterBit(ADXL345_ACT_INACT_CTL, 4); 
+  return getRegisterBit(ADXL345_ACT_INACT_CTL, 4);
 }
 bool ADXL345::isInactivityXEnabled() {  
-  return getRegisterBit(ADXL345_ACT_INACT_CTL, 2); 
+  return getRegisterBit(ADXL345_ACT_INACT_CTL, 2);
 }
 bool ADXL345::isInactivityYEnabled() {  
-  return getRegisterBit(ADXL345_ACT_INACT_CTL, 1); 
+  return getRegisterBit(ADXL345_ACT_INACT_CTL, 1);
 }
 bool ADXL345::isInactivityZEnabled() {  
-  return getRegisterBit(ADXL345_ACT_INACT_CTL, 0); 
+  return getRegisterBit(ADXL345_ACT_INACT_CTL, 0);
 }
 
 void ADXL345::setActivityX(bool state) {  
-  setRegisterBit(ADXL345_ACT_INACT_CTL, 6, state); 
+  setRegisterBit(ADXL345_ACT_INACT_CTL, 6, state);
 }
 void ADXL345::setActivityY(bool state) {  
-  setRegisterBit(ADXL345_ACT_INACT_CTL, 5, state); 
+  setRegisterBit(ADXL345_ACT_INACT_CTL, 5, state);
 }
 void ADXL345::setActivityZ(bool state) {  
-  setRegisterBit(ADXL345_ACT_INACT_CTL, 4, state); 
+  setRegisterBit(ADXL345_ACT_INACT_CTL, 4, state);
 }
 void ADXL345::setInactivityX(bool state) {  
-  setRegisterBit(ADXL345_ACT_INACT_CTL, 2, state); 
+  setRegisterBit(ADXL345_ACT_INACT_CTL, 2, state);
 }
 void ADXL345::setInactivityY(bool state) {  
-  setRegisterBit(ADXL345_ACT_INACT_CTL, 1, state); 
+  setRegisterBit(ADXL345_ACT_INACT_CTL, 1, state);
 }
 void ADXL345::setInactivityZ(bool state) {  
-  setRegisterBit(ADXL345_ACT_INACT_CTL, 0, state); 
+  setRegisterBit(ADXL345_ACT_INACT_CTL, 0, state);
 }
 
-bool ADXL345::isActivityAc() { 
-  return getRegisterBit(ADXL345_ACT_INACT_CTL, 7); 
+bool ADXL345::isActivityAc() {
+  return getRegisterBit(ADXL345_ACT_INACT_CTL, 7);
 }
-bool ADXL345::isInactivityAc(){ 
-  return getRegisterBit(ADXL345_ACT_INACT_CTL, 3); 
+bool ADXL345::isInactivityAc(){
+  return getRegisterBit(ADXL345_ACT_INACT_CTL, 3);
 }
 
 void ADXL345::setActivityAc(bool state) {  
-  setRegisterBit(ADXL345_ACT_INACT_CTL, 7, state); 
+  setRegisterBit(ADXL345_ACT_INACT_CTL, 7, state);
 }
 void ADXL345::setInactivityAc(bool state) {  
-  setRegisterBit(ADXL345_ACT_INACT_CTL, 3, state); 
+  setRegisterBit(ADXL345_ACT_INACT_CTL, 3, state);
 }
 
-bool ADXL345::getSuppressBit(){ 
-  return getRegisterBit(ADXL345_TAP_AXES, 3); 
+bool ADXL345::getSuppressBit(){
+  return getRegisterBit(ADXL345_TAP_AXES, 3);
 }
 void ADXL345::setSuppressBit(bool state) {  
-  setRegisterBit(ADXL345_TAP_AXES, 3, state); 
+  setRegisterBit(ADXL345_TAP_AXES, 3, state);
 }
 
-bool ADXL345::isTapDetectionOnX(){ 
-  return getRegisterBit(ADXL345_TAP_AXES, 2); 
+bool ADXL345::isTapDetectionOnX(){
+  return getRegisterBit(ADXL345_TAP_AXES, 2);
 }
 void ADXL345::setTapDetectionOnX(bool state) {  
-  setRegisterBit(ADXL345_TAP_AXES, 2, state); 
+  setRegisterBit(ADXL345_TAP_AXES, 2, state);
 }
-bool ADXL345::isTapDetectionOnY(){ 
-  return getRegisterBit(ADXL345_TAP_AXES, 1); 
+bool ADXL345::isTapDetectionOnY(){
+  return getRegisterBit(ADXL345_TAP_AXES, 1);
 }
 void ADXL345::setTapDetectionOnY(bool state) {  
-  setRegisterBit(ADXL345_TAP_AXES, 1, state); 
+  setRegisterBit(ADXL345_TAP_AXES, 1, state);
 }
-bool ADXL345::isTapDetectionOnZ(){ 
-  return getRegisterBit(ADXL345_TAP_AXES, 0); 
+bool ADXL345::isTapDetectionOnZ(){
+  return getRegisterBit(ADXL345_TAP_AXES, 0);
 }
 void ADXL345::setTapDetectionOnZ(bool state) {  
-  setRegisterBit(ADXL345_TAP_AXES, 0, state); 
+  setRegisterBit(ADXL345_TAP_AXES, 0, state);
 }
 
-bool ADXL345::isActivitySourceOnX(){ 
-  return getRegisterBit(ADXL345_ACT_TAP_STATUS, 6); 
+bool ADXL345::isActivitySourceOnX(){
+  return getRegisterBit(ADXL345_ACT_TAP_STATUS, 6);
 }
-bool ADXL345::isActivitySourceOnY(){ 
-  return getRegisterBit(ADXL345_ACT_TAP_STATUS, 5); 
+bool ADXL345::isActivitySourceOnY(){
+  return getRegisterBit(ADXL345_ACT_TAP_STATUS, 5);
 }
-bool ADXL345::isActivitySourceOnZ(){ 
-  return getRegisterBit(ADXL345_ACT_TAP_STATUS, 4); 
-}
-
-bool ADXL345::isTapSourceOnX(){ 
-  return getRegisterBit(ADXL345_ACT_TAP_STATUS, 2); 
-}
-bool ADXL345::isTapSourceOnY(){ 
-  return getRegisterBit(ADXL345_ACT_TAP_STATUS, 1); 
-}
-bool ADXL345::isTapSourceOnZ(){ 
-  return getRegisterBit(ADXL345_ACT_TAP_STATUS, 0); 
+bool ADXL345::isActivitySourceOnZ(){
+  return getRegisterBit(ADXL345_ACT_TAP_STATUS, 4);
 }
 
-bool ADXL345::isAsleep(){ 
-  return getRegisterBit(ADXL345_ACT_TAP_STATUS, 3); 
+bool ADXL345::isTapSourceOnX(){
+  return getRegisterBit(ADXL345_ACT_TAP_STATUS, 2);
+}
+bool ADXL345::isTapSourceOnY(){
+  return getRegisterBit(ADXL345_ACT_TAP_STATUS, 1);
+}
+bool ADXL345::isTapSourceOnZ(){
+  return getRegisterBit(ADXL345_ACT_TAP_STATUS, 0);
 }
 
-bool ADXL345::isLowPower(){ 
-  return getRegisterBit(ADXL345_BW_RATE, 4); 
+bool ADXL345::isAsleep(){
+  return getRegisterBit(ADXL345_ACT_TAP_STATUS, 3);
+}
+
+bool ADXL345::isLowPower(){
+  return getRegisterBit(ADXL345_BW_RATE, 4);
 }
 void ADXL345::setLowPower(bool state) {  
-  setRegisterBit(ADXL345_BW_RATE, 4, state); 
+  setRegisterBit(ADXL345_BW_RATE, 4, state);
 }
 
-double ADXL345::getRate(){
+float ADXL345::getRate(){
   byte _b;
   readFrom(ADXL345_BW_RATE, 1, &_b);
   _b &= B00001111;
   return (pow(2,((int) _b)-6)) * 6.25;
 }
 
-void ADXL345::setRate(double rate){
+void ADXL345::setRate(float rate){
   byte _b,_s;
   int v = (int) (rate / 6.25);
   int r = 0;
@@ -502,7 +509,7 @@ void ADXL345::setRate(double rate){
   {
     r++;
   }
-  if (r <= 9) { 
+  if (r <= 9) {
     readFrom(ADXL345_BW_RATE, 1, &_b);
     _s = (byte) (r + 6) | (_b & B11110000);
     writeTo(ADXL345_BW_RATE, _s);
@@ -558,7 +565,7 @@ void ADXL345::setRegisterBit(byte regAdress, int bitPos, bool state) {
   readFrom(regAdress, 1, &_b);
   if (state) {
     _b |= (1 << bitPos);  // forces nth bit of _b to be 1.  all other bits left alone.
-  } 
+  }
   else {
     _b &= ~(1 << bitPos); // forces nth bit of _b to be 0.  all other bits left alone.
   }
@@ -597,3 +604,5 @@ void print_byte(byte val){
     Serial.print(val >> i & 1, BIN);
   }
 }
+
+
